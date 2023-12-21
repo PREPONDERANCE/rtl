@@ -151,10 +151,10 @@ module control(din, clk, rst, z, cpustate, read, write, arload, arinc, pcload, p
 	assign r2load = (din[3:2] == 2'b10) && (add3||inc2||sub3||dec2||and3||or3||not2||shl2||mvr1||mvrd2||load5||sto4);
 	assign r3load = (din[3:2] == 2'b11) && (add3||inc2||sub3||dec2||and3||or3||not2||shl2||mvr1||mvrd2||load5||sto4);
 
-	assign r0bus = (din[1:0] == 2'b00) && (add1||add2||inc1||sub1||sub2||dec1||and1||and2||or1||or2||not1||shl1||mvr1);
-	assign r1bus = (din[1:0] == 2'b01) && (add1||add2||inc1||sub1||sub2||dec1||and1||and2||or1||or2||not1||shl1||mvr1);
-	assign r2bus = (din[1:0] == 2'b10) && (add1||add2||inc1||sub1||sub2||dec1||and1||and2||or1||or2||not1||shl1||mvr1);
-	assign r3bus = (din[1:0] == 2'b11) && (add1||add2||inc1||sub1||sub2||dec1||and1||and2||or1||or2||not1||shl1||mvr1);
+	assign r0bus = ((din[1:0] == 2'b00) && (add1||sub1||and1||or1||mvr1)) || ((din[3:2] == 2'b00) && (add2||inc1||sub2||dec1||and2||or2||not1||shl1));
+	assign r0bus = ((din[1:0] == 2'b01) && (add1||sub1||and1||or1||mvr1)) || ((din[3:2] == 2'b01) && (add2||inc1||sub2||dec1||and2||or2||not1||shl1));
+	assign r0bus = ((din[1:0] == 2'b10) && (add1||sub1||and1||or1||mvr1)) || ((din[3:2] == 2'b10) && (add2||inc1||sub2||dec1||and2||or2||not1||shl1));
+	assign r0bus = ((din[1:0] == 2'b11) && (add1||sub1||and1||or1||mvr1)) || ((din[3:2] == 2'b11) && (add2||inc1||sub2||dec1||and2||or2||not1||shl1));
 	
 	assign alus = (3'b000&&add1) || (3'b001&&inc1) ||(3'b010&&sub2) || (3'b011&&dec1) ||(3'b100&&and2) || (3'b101&&or2) || (3'b110&&not1) ||(3'b111&&shl1);
 	

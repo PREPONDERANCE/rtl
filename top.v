@@ -59,7 +59,8 @@ module top(clk,rst,A1,SW_choose,SW1,SW2,D,addr,rambus,data,HEX0,HEX1,HEX2,HEX3,H
 	assign rd=((irout[7:4]==4'b0001) || (irout[7:4]==4'b0010))?((irout[3:2]==2'b01)?r1dbus:8'bzzzzzzzz):8'bzzzzzzzz;
 	assign rd=((irout[7:4]==4'b0001) || (irout[7:4]==4'b0010))?((irout[3:2]==2'b10)?r2dbus:8'bzzzzzzzz):8'bzzzzzzzz;
 	assign rd=((irout[7:4]==4'b0001) || (irout[7:4]==4'b0010))?((irout[3:2]==2'b11)?r3dbus:8'bzzzzzzzz):8'bzzzzzzzz;*/
-	assign rd = ( (irout[7:4]==4'b0001) || (irout[7:4]==4'b0010) || (irout[7:4]==4'b0011 || (irout[7:4]==4'b0100) || (irout[7:4]==4'b0101) || (irout[7:4]==4'b0110) || (irout[7:4]==4'b0111) || (irout[7:4]==4'b1000) || (irout[7:4]==4'b1001) || ())) ? 
+	assign rd = ( (irout[7:4]==4'b0001) || (irout[7:4]==4'b0010) || (irout[7:4]==4'b0011 || (irout[7:4]==4'b0100) || (irout[7:4]==4'b0101) || (irout[7:4]==4'b0110) || (irout[7:4]==4'b0111) || (irout[7:4]==4'b1000) || (irout[7:4]==4'b1001) || (irout[7:4]==4'b1010) || (irout[7:4]==4'b1110)) ) ? ( (irout[3:2]==2'b00)?r0dbus:8'b00000001 ):8'b11111111;
+	
 
 
 
