@@ -1,0 +1,4 @@
+/*暂存器Y，存放ALU的运算结果*/
+module y(din, clk, rst,yload, dout);
+
+endmodule

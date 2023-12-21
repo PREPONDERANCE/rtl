@@ -1,0 +1,4 @@
+/*r0通用寄存器*/
+module r0(din, clk, rst,r0load, dout);
+
+endmodule

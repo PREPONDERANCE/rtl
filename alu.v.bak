@@ -1,0 +1,5 @@
+/*算术逻辑单元，x来自于Rs，bus来自于Rd*/
+module alu(alus,x, bus, dout);
+
+
+endmodule

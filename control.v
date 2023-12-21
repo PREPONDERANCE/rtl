@@ -1,0 +1,524 @@
+/*组合逻辑控制单元，根据时钟生成为控制信号和内部信号*/
+/*
+输入：
+       din：指令，8位，来自IR；
+       clk：时钟信号，1位，上升沿有效；
+       rst：复位信号，1位，与cpustate共同组成reset信号；
+       cpustate：当前CPU的状态（IN，CHECK，RUN），2位；
+       z：零标志，1位，零标志寄存器的输出，如果指令中涉及到z，可加上，否则可去掉；
+输出：
+      clr：清零控制信号
+     自行设计的各个控制信号
+*/
+//省略号中是自行设计的控制信号，需要自行补充，没用到z的话去掉z
+
+module control(din, clk, rst, z, cpustate, read, write, arload, arinc, pcload, pcinc, drload, trload, irload, r0load, r1load, r2load, r3load, alus, xload, yload, zload, pcbus, drhbus, drlbus, trbus, r1bus, r0bus, r2bus, r3bus, ybus, membus, busmem, clr); 
+
+	input [7:0]din;
+	input clk, rst, z;
+	input [1:0] cpustate;
+	
+	output read, write;
+	output arload, arinc, pcload, pcinc, pcbus;
+	output drload, trload, irload, r0load, r1load, r2load, r3load, xload, yload, zload, drlbus, drhbus, trbus, r0bus, r1bus, r2bus, r3bus, ybus, membus, busmem;
+	output [2:0] alus;
+	//parameter's definition
+
+	wire reset;
+	wire fetch1, fetch2, fetch3, nop1;
+	wire add1, add2, add3;
+	wire inc1, inc2;
+	wire sub1, sub2, sub3;
+	wire dec1, dec2;
+	wire and1, and2, and3;
+	wire or1, or2, or3;
+	wire not1, not2;
+	wire shl1, shl2;
+	wire mvr1;
+	wire mvrd1, mvrd2;
+	wire jmp1, jmp2, jmp3;
+	wire jmpz1, jmpz2, jmpz3, jmpz4;
+	wire jmnz1, jmnz2, jmnz3, jmnz4;
+	wire load1, load2, load3, load4, load5;
+	wire sto1, sto2, sto3, sto4, sto5;
+
+
+		
+	//加上自行设计的指令，这里是译码器的输出，所以nop指令经译码器输出后为inop
+	//类似地，add指令指令经译码器输出后为iadd；inac指令经译码器输出后为iinac
+	reg inop, iadd, iinc, isub, idec, iand, ior, inot, ishl, imvr, imvrd, ijmp, ijmpz, ijmnz, iload, isto;
+
+	//时钟节拍，8个为一个指令周期，t0-t2分别对应fetch1-fetch3，t3-t7分别对应各指令的执行周期，当然不是所有指令都需要5个节拍的。例如add指令只需要2个节拍：t3和t4
+	reg t0,t1,t2,t3,t4,t5,t6,t7; //时钟节拍，8个为一个周期
+
+	// 内部信号：clr清零，inc自增
+	output clr;
+	wire inc;
+	assign reset = rst&(cpustate == 2'b11);
+	// assign signals for the counter
+
+	//clr信号是每条指令执行完毕后必做的清零，下面clr赋值语句要修改，需要“或”各指令的最后一个周期
+	assign clr = nop1 | add3 | inc2 | sub3 | dec2 | and3 | or3 | not2 | shl2 | mvr1 | mvrd2 | jmp3 | jmpz4 | jmnz4 | load5 | sto5;
+	assign inc=~clr;
+
+	//generate the control signal using state information
+	//取公过程
+	assign fetch1=t0;
+	assign fetch2=t1;
+	assign fetch3=t2;
+	//什么都不做的译码
+	assign nop1=inop&&t3;//inop表示nop指令，nop1是nop指令的执行周期的第一个状态也是最后一个状态，因为只需要1个节拍t3完成
+
+	//以下写出各条指令状态的表达式
+	assign add1=iadd&&t3;
+	assign add2=iadd&&t4;
+	assign add3=iadd&&t5;
+	
+	assign inc1=iinc&&t3;
+	assign inc2=iinc&&t4;
+	
+	assign sub1=isub&&t3;
+	assign sub2=isub&&t4;
+	assign sub3=isub&&t5;
+	
+	assign dec1=idec&&t3;
+	assign dec2=idec&&t4;
+	
+	assign and1=iand&&t3;
+	assign and2=iand&&t4;
+	assign and3=iand&&t5;
+	
+	assign or1=ior&&t3;
+	assign or2=ior&&t4;
+	
+	assign not1=inot&&t3;
+	assign not2=inot&&t4;
+	
+	assign shl1=ishl&&t3;
+	assign shl2=ishl&&t4;
+	
+	assign mvr1=imvr&&t3;
+	
+	assign mvrd1=imvrd&&t3;
+	assign mvrd2=imvrd&&t4;
+	
+	assign jmp1=ijmp&&t3;
+	assign jmp2=ijmp&&t4;
+	assign jmp3=ijmp&&t5;
+	
+	assign jmpz1=ijmpz&&t3;
+	assign jmpz2=ijmpz&&t4;
+	assign jmpz3=ijmpz&&t5;
+	
+	assign jmnz1=ijmnz&&t3;
+	assign jmnz2=ijmnz&&t4;
+	assign jmnz3=ijmnz&&t5;
+	
+	assign load1=iload&&t3;
+	assign load2=iload&&t4;
+	assign load3=iload&&t5;
+	assign load4=iload&&t6;
+	assign load5=iload&&t6;
+	
+	assign sto1=isto&&t3;
+	assign sto2=isto&&t4;
+	assign sto3=isto&&t5;
+	assign sto4=isto&&t6;
+	assign sto5=isto&&t7;
+
+
+	//以下给出了pcbus的逻辑表达式，写出其他控制信号的逻辑表达式
+	assign pcbus = fetch1||fetch3;
+	assign arload = fetch1||fetch3||load3;
+	assign read = fetch2||mvrd1||jmp1||jmp2||jmpz1||jmpz2||jmnz1||jmnz2||load1||load2||load4||sto1||sto2;
+	assign membus = fetch2||mvrd1||jmp1||jmp2||jmpz1||jmpz2||jmnz1||jmnz2||load1||load2||load4||sto1||sto2;
+	assign drload = fetch2||mvrd1||jmp1||jmp2||jmpz1||jmpz2||jmnz1||jmnz2||load1||load2||load4||sto1||sto2||sto4;
+	assign pcinc = fetch2||mvrd1||load1||load2||sto1||sto2||jmpz4||jmnz4;
+	assign irload = fetch2;
+	assign xload = add1||sub1||and1||or1;
+	assign yload = add2||inc1||sub2||dec1||and2||or2||not1||shl1;
+	assign zload = add2||inc1||sub2||dec1||and2||or2||not1||shl1;
+	assign ybus = add3||inc2||sub3||dec2||and3||or3||not2||shl2;
+	assign drbus = mvrd2||load5||sto5;
+	assign arinc = jmp1||(z&&jmpz1)||(!z&&jmnz1)||load1||sto1;
+	assign trload = jmp2||jmpz2||jmnz2||load2||sto2;
+	assign drhbus = jmp3||jmpz3||jmnz3||load3||sto3;
+	assign pcload = jmp3||jmpz3||jmnz3;
+	assign trbus = jmp3||jmpz3||jmnz3||load3||sto3;
+
+	assign r0load = (din[3:2] == 2'b00) && (add3||inc2||sub3||dec2||and3||or3||not2||shl2||mvr1||mvrd2||load5||sto4);
+	assign r1load = (din[3:2] == 2'b01) && (add3||inc2||sub3||dec2||and3||or3||not2||shl2||mvr1||mvrd2||load5||sto4);
+	assign r2load = (din[3:2] == 2'b10) && (add3||inc2||sub3||dec2||and3||or3||not2||shl2||mvr1||mvrd2||load5||sto4);
+	assign r3load = (din[3:2] == 2'b11) && (add3||inc2||sub3||dec2||and3||or3||not2||shl2||mvr1||mvrd2||load5||sto4);
+
+	assign r0bus = (din[1:0] == 2'b00) && (add1||add2||inc1||sub1||sub2||dec1||and1||and2||or1||or2||not1||shl1||mvr1);
+	assign r1bus = (din[1:0] == 2'b01) && (add1||add2||inc1||sub1||sub2||dec1||and1||and2||or1||or2||not1||shl1||mvr1);
+	assign r2bus = (din[1:0] == 2'b10) && (add1||add2||inc1||sub1||sub2||dec1||and1||and2||or1||or2||not1||shl1||mvr1);
+	assign r3bus = (din[1:0] == 2'b11) && (add1||add2||inc1||sub1||sub2||dec1||and1||and2||or1||or2||not1||shl1||mvr1);
+	
+	assign alus = (3'b000&&add1) || (3'b001&&inc1) ||(3'b010&&sub2) || (3'b011&&dec1) ||(3'b100&&and2) || (3'b101&&or2) || (3'b110&&not1) ||(3'b111&&shl1);
+	
+	always@(posedge clk or negedge reset)
+	begin
+	if(!reset)
+		begin//各指令清零，以下已为nop指令清零，请补充其他指令，为其他指令清零
+			inop<=0;
+			iadd<=0;
+			iinc<=0;
+			isub<=0;
+			idec<=0;
+			iand<=0;
+			ior<=0;
+			inot<=0;
+			ishl<=0;
+			imvr<=0;
+			imvrd<=0;
+			ijmp<=0;
+			ijmpz<=0;
+			ijmnz<=0;
+			iload<=0;
+			isto<=0;
+		end
+	else 
+		begin
+			case(din[7:4])	//译码处理过程
+			4'd0:  begin		//op为0000，是nop指令，因此这里inop的值是1，而其他指令应该清零，请补充为其他指令清零的语句
+				inop<=1;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;
+				end
+			4'd1:  begin
+					//op为0001，应该是add指令，因此iadd指令为1，其他指令都应该是0。
+					//后续各分支类似，只有一条指令为1，其他指令为0，以下分支都给出nop指令的赋值，需要补充其他指令
+				inop<=0;
+				iadd<=1;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				
+				end
+			4'd2:  begin
+				inop<=0;
+				iadd<=0;
+				iinc<=1;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;
+				end
+			4'd3:  begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=1;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd4:  begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=1;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd5:  begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=1;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd6:	begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=1;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd7:	begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=1;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+				//如果还有分支，可以继续写，如果没有分支了，写上defuault语句	
+			4'd8:   begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=1;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd9:   begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=1;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd10:   begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=1;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd11:   begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=1;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd12:   begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=1;
+				ijmnz<=0;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd13:   begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=1;
+				iload<=0;
+				isto<=0;	
+				end
+			4'd14:   begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=1;
+				isto<=0;	
+				end
+			4'd15:   begin
+				inop<=0;
+				iadd<=0;
+				iinc<=0;
+				isub<=0;
+				idec<=0;
+				iand<=0;
+				ior<=0;
+				inot<=0;
+				ishl<=0;
+				imvr<=0;
+				imvrd<=0;
+				ijmp<=0;
+				ijmpz<=0;
+				ijmnz<=0;
+				iload<=0;
+				isto<=1;	
+				end
+			endcase
+		end
+	end
+
+	always @(posedge clk or negedge reset)
+	begin
+	if(!reset) //reset清零
+	begin
+		t0<=1;
+		t1<=0;
+		t2<=0;
+		t3<=0;
+		t4<=0;
+		t5<=0;
+		t6<=0;
+		t7<=0;
+	end
+	else
+	begin
+		if(inc) //运行
+		begin
+		t7<=t6;
+		t6<=t5;
+		t5<=t4;
+		t4<=t3;
+		t3<=t2;
+		t2<=t1;
+		t1<=t0;
+		t0<=0;
+		end
+		else if(clr) //清零
+		begin
+		t0<=1;
+		t1<=0;
+		t2<=0;
+		t3<=0;
+		t4<=0;
+		t5<=0;
+		t6<=0;
+		t7<=0;
+		end
+	end
+
+	end
+	/*—————结束—————*/
+endmodule
+	
+		

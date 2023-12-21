@@ -1,0 +1,4 @@
+/*r3通用寄存器*/
+module r3(din, clk, rst,r3load, dout);
+
+endmodule

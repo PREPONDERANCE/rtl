@@ -1,0 +1,4 @@
+/*数据暂存器x，存放ALU的一个输入，另外一个输入来自于总线*/
+module x(din, clk, rst,xload, dout);
+
+endmodule
