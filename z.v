@@ -9,7 +9,7 @@ module z(din,clk,rst,zload,dout);
 			if( rst == 0 )
 				dout <= 1'b0;
 			else if( zload )
-				dout <= din;
+				dout <= (din == 0);
 		end
 	
 endmodule
